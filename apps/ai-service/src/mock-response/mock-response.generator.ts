@@ -16,7 +16,8 @@ export function generateMockResponse(input: string): string {
   }
   const lower = trimmed.toLowerCase();
   for (const [keyword, response] of Object.entries(KEYWORD_RESPONSES)) {
-    if (lower.includes(keyword)) {
+    const pattern = new RegExp(`\\b${keyword}\\b`);
+    if (pattern.test(lower)) {
       return response;
     }
   }

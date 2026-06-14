@@ -60,6 +60,20 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  logger-service:
+    build:
+      context: .
+      dockerfile: apps/logger-service/Dockerfile
+    environment:
+      NATS_URL: nats://nats:4222
+      LOG_DIR: /logs
+    volumes:
+      - ./apps/logger-service/logs:/logs
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build:
       context: apps/frontend

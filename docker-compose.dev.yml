@@ -76,11 +76,10 @@ services:
       dockerfile: apps/logger-service/Dockerfile.dev
     environment:
       NATS_URL: nats://nats:4222
-      LOG_DIR: /app/logs
+      LOG_DIR: /app/apps/logger-service/logs
     volumes:
       - .:/app
       - /app/node_modules
-      - logs_data:/app/logs
     depends_on:
       nats:
         condition: service_healthy
@@ -116,4 +115,3 @@ services:
 
 volumes:
   postgres_data:
-  logs_data:

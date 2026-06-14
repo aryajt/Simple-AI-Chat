@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+
+EXPOSE 3001
+
+ENV NEXT_TELEMETRY_DISABLED=1
+# Enable file-system polling so Docker volume changes are detected
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
+
+CMD ["npm", "run", "dev"]

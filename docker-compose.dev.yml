@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-chatapp}
+      POSTGRES_USER: ${DATABASE_USER:-chatapp}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-chatapp_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-chatapp} -d ${DATABASE_NAME:-chatapp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  nats:
+    image: nats:2-alpine
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8222/healthz 2>/dev/null || wget -q --spider http://localhost:8222/ 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    ports:
+      - "${API_PORT:-3000}:3000"
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_NAME: ${DATABASE_NAME:-chatapp}
+      DATABASE_USER: ${DATABASE_USER:-chatapp}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-chatapp_secret}
+      NATS_URL: nats://nats:4222
+      API_PORT: ${API_PORT:-3000}
+      FRONTEND_URL: http://localhost:${FRONTEND_PORT:-3001}
+    volumes:
+      # Mount entire monorepo source (excludes node_modules via the anon volume below)
+      - .:/app
+      # Anonymous volume prevents host node_modules from overriding the container's
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: apps/ai-service/Dockerfile.dev
+    environment:
+      NATS_URL: nats://nats:4222
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  logger-service:
+    build:
+      context: .
+      dockerfile: apps/logger-service/Dockerfile.dev
+    environment:
+      NATS_URL: nats://nats:4222
+      LOG_DIR: /app/logs
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - logs_data:/app/logs
+    depends_on:
+      nats:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: apps/frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${FRONTEND_PORT:-3001}:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-3000}
+      NEXT_PUBLIC_SSE_URL: http://localhost:${API_PORT:-3000}
+    volumes:
+      # Mount only the frontend source; keep node_modules from the container
+      - ./apps/frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  logs_data:

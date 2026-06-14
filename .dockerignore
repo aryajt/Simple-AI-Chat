@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Node modules (each Dockerfile installs its own)
+node_modules
+**/node_modules
+
+# Build output (rebuilt inside Docker)
+dist
+**/dist
+
+# Next.js build output
+apps/frontend/.next
+apps/frontend/out
+
+# Development files
+*.log
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.kiro
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml

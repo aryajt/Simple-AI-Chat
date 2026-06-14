@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies once (cached layer)
+COPY package*.json ./
+RUN npm ci
+
+# Source is mounted as a volume at runtime — no COPY needed
+EXPOSE 3000
+
+CMD ["npx", "nest", "start", "api", "--watch"]
